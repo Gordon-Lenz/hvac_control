@@ -1,0 +1,25 @@
+{
+  "relays": {
+    "HVAC_POWER": {
+      "relay_num": 1,
+      "pin": 17
+    },
+    "HEATING_MODE": {
+      "relay_num": 2,
+      "pin": 18
+    },
+    "COOLING_MODE": {
+      "relay_num": 3,
+      "pin": 27
+    }
+  },
+
+  "sensors": {
+    "TEMPERATURE_SENSOR": {
+      "pin": 4 
+    },
+    "HUMIDITY_SENSOR": {
+      "pin": 17
+    }
+  }
+}
