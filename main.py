@@ -1,96 +1,115 @@
 import configparser
 import json
 import time
+import datetime 
 from gpiozero import OutputDevice
 from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime
 from sqlalchemy.orm import declarative_base, sessionmaker
+from sqlalchemy.schema import CreateSchema
+from sqlalchemy.exc import OperationalError, ProgrammingError 
 
 # --- Configuration ---
 config = configparser.ConfigParser()
 config.read('config.ini')
 
-# Load relay and sensor mappings from JSON
-with open('pin_mappings.json', 'r') as f:
-    mappings = json.load(f)
+# Load relay and sensor mappings from JSON (commented out for now)
+# with open('pin_mappings.json', 'r') as f:
+#    mappings = json.load(f)
 
-relay_mappings = mappings['relays']
-sensor_mappings = mappings['sensors']
+# relay_mappings = mappings['relays']
+# sensor_mappings = mappings['sensors']
+
+# Get the HVAC unit ID from the config file
+hvac_unit_id = config.get('HVAC', 'hvac_unit_id')
+
+# Define the schema name based on the unit ID
+schema_name = f'hvac_{hvac_unit_id}'
 
 # --- Database Setup ---
 db_config = config['DATABASE']
-connection_string = f'mssql+pyodbc://{db_config["username"]}:{db_config["password"]}@{db_config["server"]}/{db_config["database"]}?driver={db_config["driver"]}'
-engine = create_engine(connection_string)
 
-Base = declarative_base()
+# Construct the connection string 
+connection_string = f'mssql+pyodbc://hvac_admin:p@localhost\\SQLEXPRESS/{db_config["database"]}?driver=ODBC+Driver+17+for+SQL+Server&trusted_connection=yes'
 
-class SetPoint(Base):
-    __tablename__ = 'set_points'
-    # ... (define columns as discussed earlier)
+try:
+    engine = create_engine(connection_string)
 
-class ConfigOption(Base):
-    __tablename__ = 'config_options'
-    # ... (define columns as discussed earlier)
+    # Create the schema if it doesn't exist
+    with engine.connect() as connection:
+        if not engine.dialect.has_schema(connection, schema_name):
+            connection.execute(CreateSchema(schema_name))
 
-Base.metadata.create_all(engine)
+    Base = declarative_base()
 
-# --- Relay Setup ---
-relays = {
-    name: OutputDevice(relay['pin'], active_high=True, initial_value=False) 
-    for name, relay in relay_mappings.items()
-}
+    class HvacSensorData(Base):
+        __tablename__ = 'hvac_sensor_data'
+        __table_args__ = {'schema': schema_name}
+        id = Column(Integer, primary_key=True)
+        sensor = Column(String(50))
+        timestamp = Column(DateTime)
+        data = Column(Float) 
 
-# --- Sensor Setup ---
-# Initialize sensors based on sensor_mappings
-# ... 
+    class HvacConfig(Base):  
+        __tablename__ = 'hvac_config'
+        __table_args__ = {'schema': schema_name}
+        id = Column(Integer, primary_key=True)
+        config_field = Column(String(50))
+        value = Column(String(100))
+        timestamp = Column(DateTime)
 
-# --- Helper Functions ---
+    # Create the database tables within the specified schema (if they don't exist)
+    Base.metadata.create_all(engine)
 
-def get_latest_set_point(session):
-    """
-    Retrieves the latest set point from the database.
-    """
-    return session.query(SetPoint).order_by(SetPoint.timestamp.desc()).first()
+except OperationalError as e:
+    print(f"Error connecting to the database or creating schema: {e}")
+    exit(1)  
 
-def get_config_option(session, setting_name):
-    """
-    Retrieves the value of a specific configuration option from the database.
-    """
-    return session.query(ConfigOption).filter_by(setting_name=setting_name).first()
+# --- Relay Setup (commented out for now) ---
+# relays = {
+#     name: OutputDevice(relay['pin'], active_high=True, initial_value=False) 
+#     for name, relay in relay_mappings.items()
+# }
+
+# --- Sensor Setup (commented out for now) ---
+# temperature_sensor_pin = sensor_mappings['TEMPERATURE_SENSOR']['pin'] 
+# humidity_sensor_pin = sensor_mappings['HUMIDITY_SENSOR']['pin']
+
+# Initialize sensors based on sensor_mappings and the retrieved pin numbers
+# ... (Add your actual sensor initialization code here)
 
 # --- Main Control Loop ---
 try:
     while True:
-        # 1. Retrieve set points and config options from the database
-        Session = sessionmaker(bind=engine)
-        session = Session()
-        latest_set_point = get_latest_set_point(session)
-
         # Get other configuration options from the config.ini file
-        temperature_sensor_pin = int(config.get('HVAC', 'temperature_sensor_pin'))
-        humidity_sensor_pin = int(config.get('HVAC', 'humidity_sensor_pin'))
         default_temperature = float(config.get('HVAC', 'default_temperature'))
         polling_interval = int(config.get('HVAC', 'polling_interval'))
+        simulated_temperature = float(config.get('HVAC', 'simulated_temperature')) 
 
-        # ... (retrieve other config options as needed using config.get())
+        # 2. Read sensor data (or use simulated data for now)
+        temperature_reading = simulated_temperature 
+
+        # 3. Implement your HVAC control logic based on config options, and sensor data
+        # ... (For now, you can focus on testing database interactions)
+
+        # 4. Store sensor data in the database (example)
+        Session = sessionmaker(bind=engine)
+        session = Session()
+        new_sensor_data = HvacSensorData(sensor='temperature', timestamp=datetime.datetime.now(), data=temperature_reading)
+        session.add(new_sensor_data)
+        session.commit()
         session.close()
 
-        # 2. Read sensor data
-        # ... (Use sensor_mappings to access the sensor pins and read data)
-
-        # 3. Implement your HVAC control logic based on set points, config options, and sensor data
-        # ... 
-
-        # Basic Example: Turn on HVAC if temperature is below set point
-        if latest_set_point and latest_set_point.temperature < 70: 
-            relays['HVAC_POWER'].on()
-            # ... (Set mode and fan speed based on latest_set_point)
-        else:
-            relays['HVAC_POWER'].off()
+        # Basic Example: Turn on HVAC if temperature is below set point (commented out for now)
+        # if simulated_temperature < default_temperature: 
+        #     relays['HVAC_POWER'].on()
+        #     # ... (Set mode and fan speed based on your logic)
+        # else:
+        #     relays['HVAC_POWER'].off()
 
         time.sleep(polling_interval) 
 
 except KeyboardInterrupt:
-    # Cleanup on exit
-    for relay in relays.values():
-        relay.off()
+    # Cleanup on exit (commented out for now, since relays are not being used)
+    # for relay in relays.values():
+    #     relay.off()
     print("Exiting...")
