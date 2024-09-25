@@ -8,16 +8,12 @@ from sqlalchemy.orm import declarative_base, sessionmaker
 from sqlalchemy.schema import CreateSchema
 from sqlalchemy.exc import OperationalError, ProgrammingError 
 
+# Import the models from your new file
+from models import Base, HvacSensorData, HvacConfig 
+
 # --- Configuration ---
 config = configparser.ConfigParser()
 config.read('config.ini')
-
-# Load relay and sensor mappings from JSON (commented out for now)
-# with open('pin_mappings.json', 'r') as f:
-#    mappings = json.load(f)
-
-# relay_mappings = mappings['relays']
-# sensor_mappings = mappings['sensors']
 
 # Get the HVAC unit ID from the config file
 hvac_unit_id = config.get('HVAC', 'hvac_unit_id')
@@ -28,8 +24,8 @@ schema_name = f'hvac_{hvac_unit_id}'
 # --- Database Setup ---
 db_config = config['DATABASE']
 
-# Construct the connection string 
-connection_string = f'mssql+pyodbc://hvac_admin:p@localhost\\SQLEXPRESS/{db_config["database"]}?driver=ODBC+Driver+17+for+SQL+Server&trusted_connection=yes'
+# Construct the connection string
+connection_string = f'mssql+pyodbc://{db_config["username"]}:{db_config["password"]}@{db_config["server"]}/{db_config["database"]}?driver={db_config["driver"]}&trusted_connection=yes'
 
 try:
     engine = create_engine(connection_string)
@@ -39,30 +35,27 @@ try:
         if not engine.dialect.has_schema(connection, schema_name):
             connection.execute(CreateSchema(schema_name))
 
-    Base = declarative_base()
-
-    class HvacSensorData(Base):
-        __tablename__ = 'hvac_sensor_data'
-        __table_args__ = {'schema': schema_name}
-        id = Column(Integer, primary_key=True)
-        sensor = Column(String(50))
-        timestamp = Column(DateTime)
-        data = Column(Float) 
-
-    class HvacConfig(Base):  
-        __tablename__ = 'hvac_config'
-        __table_args__ = {'schema': schema_name}
-        id = Column(Integer, primary_key=True)
-        config_field = Column(String(50))
-        value = Column(String(100))
-        timestamp = Column(DateTime)
+    # Add schema to table arguments after importing
+    HvacSensorData.__table_args__ = {'schema': schema_name}
+    HvacConfig.__table_args__ = {'schema': schema_name}
 
     # Create the database tables within the specified schema (if they don't exist)
     Base.metadata.create_all(engine)
 
-except OperationalError as e:
+    # Populate hvac_config table with initial values from config.ini (if it's empty)
+    Session = sessionmaker(bind=engine)
+    session = Session()
+    if not session.query(HvacConfig).first(): 
+        for section in config.sections():
+            for option in config.options(section):
+                new_config = HvacConfig(section=section, option=option, value=config.get(section, option))
+                session.add(new_config)
+        session.commit()
+    session.close()
+
+except (OperationalError, ProgrammingError) as e:
     print(f"Error connecting to the database or creating schema: {e}")
-    exit(1)  
+    exit(1) 
 
 # --- Relay Setup (commented out for now) ---
 # relays = {
@@ -87,17 +80,19 @@ try:
 
         # 2. Read sensor data (or use simulated data for now)
         temperature_reading = simulated_temperature 
+        print(f"Simulated temperature reading: {temperature_reading}°F")
 
-        # 3. Implement your HVAC control logic based on config options, and sensor data
+        # 3. Implement your HVAC control logic based on config options and sensor data
         # ... (For now, you can focus on testing database interactions)
 
-        # 4. Store sensor data in the database (example)
+        # 4. Store sensor data in the database
         Session = sessionmaker(bind=engine)
         session = Session()
         new_sensor_data = HvacSensorData(sensor='temperature', timestamp=datetime.datetime.now(), data=temperature_reading)
         session.add(new_sensor_data)
         session.commit()
         session.close()
+        print("Sensor data inserted into the database.")
 
         # Basic Example: Turn on HVAC if temperature is below set point (commented out for now)
         # if simulated_temperature < default_temperature: 
