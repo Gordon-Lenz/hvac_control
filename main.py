@@ -7,7 +7,7 @@ from gpiozero import OutputDevice
 from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime
 from sqlalchemy.orm import declarative_base, sessionmaker
 from sqlalchemy.schema import CreateSchema
-from sqlalchemy.exc import OperationalError, ProgrammingError 
+from sqlalchemy.exc import OperationalError, ProgrammingError, IntegrityError
 
 # Import the models from your new file
 from models import Base, HvacSensorData, HvacConfig 
@@ -38,7 +38,7 @@ hvac_unit_id = config.get('HVAC', 'hvac_unit_id')
 # Define the schema name based on the unit ID
 schema_name = f'hvac_{hvac_unit_id}'
 
-# --- Database Setup ---
+# --- Database Setup with Error Handling ---
 db_config = config['DATABASE']
 
 # Construct the connection string using the provided configuration
