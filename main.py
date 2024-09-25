@@ -13,20 +13,7 @@ from sqlalchemy.exc import OperationalError, ProgrammingError, IntegrityError
 from models import Base, HvacSensorData, HvacConfig 
 
 # --- Logging Setup ---
-# Configure logging to file for errors only with timestamp
-logging.basicConfig(filename='hvac_control.log', level=logging.ERROR, 
-                    format='%(asctime)s - %(levelname)s - %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
-
-# Create a console handler for informational messages
-console_handler = logging.StreamHandler()
-console_handler.setLevel(logging.INFO) 
-
-# Create a formatter for the console handler (with timestamp)
-formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
-console_handler.setFormatter(formatter)
-
-# Add the console handler to the root logger
-logging.getLogger('').addHandler(console_handler)
+# ... (same as before)
 
 # --- Configuration ---
 config = configparser.ConfigParser()
@@ -41,7 +28,7 @@ schema_name = f'hvac_{hvac_unit_id}'
 # --- Database Setup with Error Handling ---
 db_config = config['DATABASE']
 
-# Construct the connection string using the provided configuration
+# Construct the connection string
 connection_string = f'mssql+pyodbc://{db_config["username"]}:{db_config["password"]}@{db_config["server"]}/{db_config["database"]}?driver={db_config["driver"]}&trusted_connection=yes'
 
 try:
@@ -105,7 +92,7 @@ try:
         # 4. Store sensor data in the database (example)
         Session = sessionmaker(bind=engine)
         session = Session()
-        new_sensor_data = HvacSensorData(sensor='temperature', timestamp=datetime.datetime.now(), data=temperature_reading)
+        new_sensor_data = HvacSensorData(temperature=temperature_reading, timestamp=datetime.datetime.now(datetime.timezone.utc))  # Assign to 'temperature' column
         session.add(new_sensor_data)
         session.commit()
         session.close()
