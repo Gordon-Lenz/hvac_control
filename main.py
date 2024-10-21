@@ -4,16 +4,29 @@ import time
 import datetime
 import logging
 from gpiozero import OutputDevice
-from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime
-from sqlalchemy.orm import declarative_base, sessionmaker
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
 from sqlalchemy.schema import CreateSchema
 from sqlalchemy.exc import OperationalError, ProgrammingError, IntegrityError
 
 # Import the models from your new file
-from models import Base, HvacSensorData, HvacConfig 
+from models import Base, create_models  # Import the create_models function 
 
 # --- Logging Setup ---
-# ... (same as before)
+# Configure logging to file for errors only with timestamp
+logging.basicConfig(filename='hvac_control.log', level=logging.INFO, 
+                    format='%(asctime)s - %(levelname)s - %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
+
+# Create a console handler for informational messages
+console_handler = logging.StreamHandler()
+console_handler.setLevel(logging.INFO) 
+
+# Create a formatter for the console handler (with timestamp)
+formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
+console_handler.setFormatter(formatter)
+
+# Add the console handler to the root logger
+logging.getLogger('').addHandler(console_handler)
 
 # --- Configuration ---
 config = configparser.ConfigParser()
@@ -39,9 +52,8 @@ try:
         if not engine.dialect.has_schema(connection, schema_name):
             connection.execute(CreateSchema(schema_name))
 
-    # Add schema to table arguments after importing
-    HvacSensorData.__table_args__ = {'schema': schema_name}
-    HvacConfig.__table_args__ = {'schema': schema_name}
+    # Create the models with dynamic table names *before* creating the tables
+    HvacSensorData, HvacConfig = create_models(schema_name)
 
     # Create the database tables within the specified schema (if they don't exist)
     Base.metadata.create_all(engine)
@@ -62,25 +74,18 @@ except (OperationalError, ProgrammingError) as e:
     exit(1) 
 
 # --- Relay Setup (commented out for now) ---
-# relays = {
-#     name: OutputDevice(relay['pin'], active_high=True, initial_value=False) 
-#     for name, relay in relay_mappings.items()
-# }
+# ...
 
 # --- Sensor Setup (commented out for now) ---
-# temperature_sensor_pin = sensor_mappings['TEMPERATURE_SENSOR']['pin'] 
-# humidity_sensor_pin = sensor_mappings['HUMIDITY_SENSOR']['pin']
-
-# Initialize sensors based on sensor_mappings and the retrieved pin numbers
-# ... (Add your actual sensor initialization code here)
+# ...
 
 # --- Main Control Loop ---
 try:
     while True:
-        # Get other configuration options from the config.ini file
         default_temperature = float(config.get('HVAC', 'default_temperature'))
         polling_interval = int(config.get('HVAC', 'polling_interval'))
-        simulated_temperature = float(config.get('HVAC', 'simulated_temperature')) 
+        simulated_temperature = float(config.get('HVAC', 'simulated_temperature'))  # Moved this line inside the loop
+        # ... (Get configuration options from config.ini)
 
         # 2. Read sensor data (or use simulated data for now)
         temperature_reading = simulated_temperature 
@@ -92,23 +97,16 @@ try:
         # 4. Store sensor data in the database (example)
         Session = sessionmaker(bind=engine)
         session = Session()
-        new_sensor_data = HvacSensorData(temperature=temperature_reading, timestamp=datetime.datetime.now(datetime.timezone.utc))  # Assign to 'temperature' column
+        new_sensor_data = HvacSensorData(temperature=temperature_reading, timestamp=datetime.datetime.now(datetime.timezone.utc)) 
         session.add(new_sensor_data)
         session.commit()
         session.close()
         logging.info("Sensor data inserted into the database.")
 
-        # Basic Example: Turn on HVAC if temperature is below set point (commented out for now)
-        # if simulated_temperature < default_temperature: 
-        #     relays['HVAC_POWER'].on()
-        #     # ... (Set mode and fan speed based on your logic)
-        # else:
-        #     relays['HVAC_POWER'].off()
+        # ... (rest of the control loop)
 
-        time.sleep(polling_interval) 
+        time.sleep(polling_interval)
 
 except KeyboardInterrupt:
-    # Cleanup on exit (commented out for now, since relays are not being used)
-    # for relay in relays.values():
-    #     relay.off()
-    print("Exiting...")
+    logging.info("Keyboard interrupt detected. Exiting...")
+    exit(0)
