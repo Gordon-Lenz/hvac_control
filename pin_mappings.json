@@ -14,12 +14,32 @@
     }
   },
 
-  "sensors": {
-    "TEMPERATURE_SENSOR": {
-      "pin": 4 
-    },
-    "HUMIDITY_SENSOR": {
-      "pin": 17
+    "sensors": {
+      "temperature": {
+        "pin": 4, 
+        "description": "Ambient temperature sensor in the living room"
+      },
+      "humidity": {
+        "pin": 17,
+        "description": "Humidity sensor in the main hallway"
+      },
+      "current_phase1": {
+        "pin": 22,
+        "description": "Current sensor for phase 1 of the HVAC power supply"
+      },
+      "current_phase2": {
+        "pin": 23,
+        "description": "Current sensor for phase 2 of the HVAC power supply"
+      },
+      "current_phase3": {
+        "pin": 24,
+        "description": "Current sensor for phase 3 of the HVAC power supply"
+      },
+      "pressure": {
+        "pin": 25,
+        "description": "Pressure sensor in the HVAC duct"
+      }
     }
-  }
-}
+  
+} 
+ 
