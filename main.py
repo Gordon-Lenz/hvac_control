@@ -52,7 +52,7 @@ try:
     engine = create_engine(connection_string)
 
     # Create the schema if it doesn't exist
-    with engine.connect() as connection:
+    with engine.begin() as connection:
         if not engine.dialect.has_schema(connection, schema_name):
             connection.execute(CreateSchema(schema_name))
 
@@ -85,7 +85,7 @@ try:
     while True:
         # Get other configuration options from the config.ini file
         default_temperature = float(config.get('HVAC', 'default_temperature'))
-        polling_interval = int(config.get('HVAC', 'polling_interval'))
+        polling_interval = int(config.get('GLOBAL', 'polling_interval'))
         simulated_temperature = float(config.get('HVAC', 'simulated_temperature')) 
 
         # 2. Read sensor data (or use simulated data for now)
@@ -107,6 +107,7 @@ try:
                     if db_config_option.value != config.get(section, option):
                         # Update config.ini with the value from the database
                         config.set(section, option, db_config_option.value)
+                        db_config_option.timestamp = datetime.datetime.now(datetime.timezone.utc)  # Update timestamp in database
                         logging.info(f"Updated '{option}' in section '{section}' from database.")
                 else:
                     # Option doesn't exist in the database, add it
