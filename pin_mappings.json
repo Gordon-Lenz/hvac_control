@@ -15,9 +15,13 @@
   },
 
     "sensors": {
-      "temperature": {
+      "temperature_inlet": {
         "pin": 4, 
-        "description": "Ambient temperature sensor in the living room"
+        "description": "Ambient temperature sensor inlet"
+      },
+      "temperature_outlet": {
+        "pin": 5, 
+        "description": "Ambient temperature sensor outlet"
       },
       "humidity": {
         "pin": 17,

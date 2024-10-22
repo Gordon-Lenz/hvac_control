@@ -1,15 +1,21 @@
-import configparser
+from sqlalchemy import create_engine
+from sqlalchemy.schema import CreateSchema
+import configparser 
 
-
+# --- Configuration ---
 config = configparser.ConfigParser()
 config.read('config.ini')
 
-# --- Database Setup ---
+# --- Database Setup with Error Handling ---
 db_config = config['DATABASE']
 
-connection_string_correcyt = f'mssql+pyodbc://hvac_admin:p@localhost\\SQLEXPRESS/{db_config["database"]}?driver=ODBC+Driver+17+for+SQL+Server&trusted_connection=yes'
+# Construct the connection string
+connection_string = f'mssql+pyodbc://{db_config["username"]}:{db_config["password"]}@{db_config["server"]}/{db_config["database"]}?driver={db_config["driver"]}&trusted_connection=yes'
 
-# Construct the connection string with optional debug settings
-connection_string = f'mssql+pyodbc://{db_config["username"]}:{db_config["password"]}@{db_config["server"]}/{db_config["database"]}?driver={db_config["driver"]}'
-print(connection_string_correcyt)
-print(connection_string)
+engine = create_engine(connection_string)
+
+schema_name = "hvac_4test"
+
+with engine.begin() as connection:  # Use engine.begin() to manage the transaction
+    if not engine.dialect.has_schema(connection, schema_name):
+        connection.execute(CreateSchema(schema_name))
