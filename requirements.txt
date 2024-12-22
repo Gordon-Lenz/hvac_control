@@ -1,3 +1,7 @@
 gpiozero
 SQLAlchemy
 pyodbc
+asyncio-mqtt
+requests
+pandas
+python-weather
