@@ -11,7 +11,7 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.schema import CreateSchema
 from sqlalchemy.exc import OperationalError, ProgrammingError, IntegrityError
 import shelve
-from asyncio_mqtt import Client
+from aiomqtt import Client
 
 # Import the models from your new file
 from models import Base, create_models
