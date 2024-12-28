@@ -23,13 +23,4 @@ def create_models(schema_name, sensor_mappings):
 
     HvacSensorData = type('HvacSensorData', (Base,), attributes)  # Dynamically create the class
 
-    class HvacConfig(Base):  
-        __tablename__ = 'config'  
-        __table_args__ = {'schema': schema_name}
-        id = Column(Integer, primary_key=True)
-        section = Column(String(50))  
-        option = Column(String(50))   
-        value = Column(String(100))
-        timestamp = Column(DateTime, index=True, default=datetime.datetime.now(datetime.timezone.utc)) 
-
-    return HvacSensorData, HvacConfig
+    return HvacSensorData
