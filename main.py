@@ -72,11 +72,14 @@ except Exception as e:
     exit(1)
 
 # --- MQTT Setup ---
-# Get the MQTT broker address from the config file, with fallback to environment variable
+# Get the MQTT broker address, username, and password from environment variables or config file
 mqtt_broker_address = os.environ.get('MQTT_BROKER_ADDRESS', config.get('MQTT', 'broker_address'))
+mqtt_username = os.environ.get('MQTT_USERNAME', config.get('MQTT', 'username', fallback=None))
+mqtt_password = os.environ.get('MQTT_PASSWORD', config.get('MQTT', 'password', fallback=None))
+
 mqtt_topic = 'hvac/config'
 mqtt_manager = MQTTManager('config.ini', mqtt_broker_address, mqtt_topic)
-mqtt_manager.connect()
+mqtt_manager.connect(mqtt_username, mqtt_password)  # Pass username and password to connect()
 
 def reload_config_from_file():
     global config, averaging_interval, polling_interval, mqtt_broker_address

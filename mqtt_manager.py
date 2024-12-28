@@ -44,8 +44,10 @@ class MQTTManager:
     def set_config_reload_callback(self, callback):
         self.config_reload_callback = callback
 
-    def connect(self):
+    def connect(self, username=None, password=None):
         try:
+            if username and password:
+                self.client.username_pw_set(username, password)
             self.client.connect(self.broker_address, 1883, 60)
             self.client.loop_start()
             self.client.subscribe(self.topic)
