@@ -133,9 +133,6 @@ try:
                 # Calculate the average and round to 2 decimal places
                 averaged_data[sensor_name] = round(sum(values) / len(values), 2) if values else 0
 
-            # Crucially, use a datetime object here, NOT a string
-            averaged_data['timestamp'] = datetime.datetime.now(datetime.timezone.utc)
-
             # Insert averaged data into the database
             db_manager.insert_sensor_data(averaged_data)
 
@@ -144,7 +141,8 @@ try:
             try:
                 # Create a copy of the data for MQTT and format the timestamp
                 mqtt_data = averaged_data.copy()
-                mqtt_data['timestamp'] = mqtt_data['timestamp'].isoformat()
+                # Get current local time for MQTT message
+                mqtt_data['timestamp'] = datetime.datetime.now().isoformat()
 
                 mqtt_manager.publish(mqtt_topic, mqtt_data)  # Now pass the modified dictionary
                 logging.info(f"Published sensor data to MQTT topic: {mqtt_topic}")
